@@ -92,6 +92,6 @@ You can run these benchmarks on your machine by typing this command
 BenchmarkBuild10KKeys         20       93784414 ns/op
 BenchmarkBuild100KKeys         1     1399059965 ns/op
 BenchmarkBuild1MKeys           1    34712674432 ns/op
-BenchmarkMapGetIntArray  5000000            289 ns/op
-BenchmarkMapGetFibArray  2000000            658 ns/op
+BenchmarkMapGetIntArray  5000000            346 ns/op
+BenchmarkMapGetFibArray  2000000            711 ns/op
 ```

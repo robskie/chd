@@ -333,7 +333,8 @@ func BenchmarkMapGetIntArray(b *testing.B) {
 	keys := make([][]byte, 1e5)
 
 	for i := range keys {
-		k := encode(i)
+		k := randBytes(rand.Intn(8) + 1)
+
 		keys[i] = k
 		builder.Add(k, nil)
 	}
@@ -357,7 +358,8 @@ func BenchmarkMapGetFibArray(b *testing.B) {
 	keys := make([][]byte, 1e5)
 
 	for i := range keys {
-		k := encode(i)
+		k := randBytes(rand.Intn(8) + 1)
+
 		keys[i] = k
 		builder.Add(k, nil)
 	}
