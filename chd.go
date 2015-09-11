@@ -76,17 +76,18 @@ func (m *Map) Get(key []byte) ([]byte, error) {
 	if size < 0 {
 		return nil, ErrNotFound
 	}
+
+	keySize := m.keySize
+	if keySize == -1 {
+		keySize = m.keySizes[idx]
+	}
+
 	data := m.data[offset : offset+size]
-
-	if len(data) < len(key) {
+	if !bytes.Equal(key, data[:keySize]) {
 		return nil, ErrNotFound
 	}
 
-	if !bytes.Equal(key, data[:len(key)]) {
-		return nil, ErrNotFound
-	}
-
-	return data[len(key):], nil
+	return data[keySize:], nil
 }
 
 // Write serializes the map.
@@ -197,11 +198,6 @@ func (i *Iterator) Next() *Iterator {
 
 	var idx int
 	for idx = i.index; idx < m.tableSize; idx++ {
-		keySize := m.keySize
-		if keySize == -1 {
-			keySize = m.keySizes[idx]
-		}
-
 		size := m.itemSize
 		offset := idx * size
 		if size == -1 {
@@ -211,6 +207,11 @@ func (i *Iterator) Next() *Iterator {
 
 		if size < 0 {
 			continue
+		}
+
+		keySize := m.keySize
+		if keySize == -1 {
+			keySize = m.keySizes[idx]
 		}
 
 		data := m.data[offset : offset+size]
