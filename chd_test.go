@@ -51,10 +51,6 @@ func TestMapGetNilValues(t *testing.T) {
 	}
 
 	m := b.Build(nil)
-	assert.Empty(t, m.sizes)
-	assert.Empty(t, m.offsets)
-	assert.Empty(t, m.keySizes)
-
 	for i := 0; i < 1e5; i++ {
 		k := encode(i)
 		v, err := m.Get(k)
@@ -83,7 +79,7 @@ func TestMapGetFixedKeySize(t *testing.T) {
 	}
 
 	m := b.Build(nil)
-	assert.Empty(t, m.keySizes)
+	assert.NotEqual(t, -1, m.keySize)
 
 	for i := 0; i < 1e5; i++ {
 		k := encode(i)
@@ -109,9 +105,8 @@ func TestMapGetFixedKeyValueSize(t *testing.T) {
 	}
 
 	m := b.Build(nil)
-	assert.Empty(t, m.sizes)
-	assert.Empty(t, m.offsets)
-	assert.Empty(t, m.keySizes)
+	assert.NotEqual(t, -1, m.keySize)
+	assert.NotEqual(t, -1, m.itemSize)
 
 	for i := 0; i < 1e5; i++ {
 		k := encode(i)
@@ -198,9 +193,13 @@ func TestMapGetHitMiss(t *testing.T) {
 
 func TestMapWriteRead(t *testing.T) {
 	b := NewBuilder()
+	values := make([][]byte, 1e5)
 	for i := 0; i < 1e5; i++ {
-		d := encode(i)
-		b.Add(d, d)
+		k := encode(i)
+		v := randBytes(10)
+
+		values[i] = v
+		b.Add(k, v)
 	}
 	m := b.Build(nil)
 
@@ -220,7 +219,7 @@ func TestMapWriteRead(t *testing.T) {
 			break
 		}
 
-		if !assert.Equal(t, i, decode(v)) {
+		if !assert.Equal(t, values[i], v) {
 			break
 		}
 	}

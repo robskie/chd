@@ -201,19 +201,17 @@ func (b *Builder) build(
 	}
 
 	offset := 0
-	sizes := make([]int, ts)
-	ksizes := make([]int, ts)
-	offsets := make([]int, ts)
+	idata := newItemData(tableSize, b.itemSize, b.keySize)
 	for i, itm := range table {
 		if itm == nil {
 			// Add sentinel
-			sizes[i] = -1
+			idata.addSize(i, -1)
 			continue
 		}
 
-		offsets[i] = offset
-		sizes[i] = len(itm.data)
-		ksizes[i] = len(itm.key)
+		idata.addOffset(i, offset)
+		idata.addSize(i, len(itm.data))
+		idata.addKeySize(i, len(itm.key))
 
 		offset += len(itm.data)
 	}
@@ -229,20 +227,8 @@ func (b *Builder) build(
 
 	var padding []byte
 	if b.itemSize > 0 {
-		// Optimization: If item size is
-		// constant, there's no need for
-		// sizes and offsets array.
-		sizes = nil
-		offsets = nil
-
 		padding = make([]byte, b.itemSize-len(sentinel))
 		padding = append(sentinel, padding...)
-	}
-
-	// Optimization: If key size is constant,
-	// there's no need to store key sizes.
-	if b.keySize > 0 {
-		ksizes = nil
 	}
 
 	data := make([]byte, 0, offset)
@@ -257,9 +243,7 @@ func (b *Builder) build(
 	m := &Map{
 		seed,
 		data,
-		sizes,
-		offsets,
-		ksizes,
+		idata,
 		b.keySize,
 		b.itemSize,
 		sentinel,
