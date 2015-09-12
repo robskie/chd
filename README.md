@@ -89,9 +89,9 @@ You can run these benchmarks on your machine by typing this command
 ```go test github.com/robskie/chd -bench=.*``` in terminal.
 
 ```
-BenchmarkBuild10KKeys         20       93784414 ns/op
-BenchmarkBuild100KKeys         1     1399059965 ns/op
-BenchmarkBuild1MKeys           1    34712674432 ns/op
+BenchmarkBuild10KKeys         30       52741277 ns/op
+BenchmarkBuild100KKeys         2      655835230 ns/op
+BenchmarkBuild1MKeys           1    14133320013 ns/op
 BenchmarkMapGetIntArray  5000000            346 ns/op
 BenchmarkMapGetFibArray  2000000            711 ns/op
 ```

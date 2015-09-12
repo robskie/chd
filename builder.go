@@ -2,6 +2,7 @@ package chd
 
 import (
 	"errors"
+	"math"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -157,16 +158,23 @@ func (b *Builder) build(
 		if len(b.hashes) == 0 {
 			continue
 		}
+
+		d0 := uint64(0)
+		d1 := uint64(math.MaxUint64) // rolls back to 0 when 1 is added
+
 		hidx := uint64(0)
 
 	NextHashIdx:
 		for {
-			if hidx >= maxHashIdx {
+			if hidx == maxHashIdx {
 				return nil, errors.New("chd: can't find collission-free hash function")
 			}
 
-			d0 := hidx / ts
-			d1 := hidx % ts
+			d1++
+			if d1 == ts {
+				d0++
+				d1 = 0
+			}
 
 			indices = indices[:0]
 			for _, h := range b.hashes {
