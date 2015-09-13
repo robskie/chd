@@ -17,6 +17,8 @@ type item struct {
 	// counter is used for
 	// removing key duplicates
 	counter int
+
+	deleted bool
 }
 
 type items []*item
@@ -106,7 +108,14 @@ func (b *Builder) Add(key, value []byte) {
 		b.maxKeySize = ks
 	}
 
-	item := &item{key, value, b.counter}
+	item := &item{key, value, b.counter, false}
+	b.items = append(b.items, item)
+	b.counter++
+}
+
+// Delete removes the item with the given key.
+func (b *Builder) Delete(key []byte) {
+	item := &item{key, nil, b.counter, true}
 	b.items = append(b.items, item)
 	b.counter++
 }
@@ -122,11 +131,14 @@ func (b *Builder) Build(array CompactArray) *Map {
 	sort.Sort(b.items)
 	items := make(items, 0, len(b.items))
 
-	// Remove duplicates
+	// Remove duplicates and deleted items
 	pkey := randBytes(b.maxKeySize + 1)
 	for _, item := range b.items {
 		if !bytes.Equal(pkey, item.key) {
-			items = append(items, item)
+			if !item.deleted {
+				items = append(items, item)
+			}
+
 			pkey = item.key
 		}
 	}

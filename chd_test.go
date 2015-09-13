@@ -191,6 +191,70 @@ func TestMapGetHitMiss(t *testing.T) {
 	assert.EqualValues(t, len(kv), m.Len())
 }
 
+func TestMapDelete(t *testing.T) {
+	b := NewBuilder()
+
+	// Delete items that weren't added
+	for i := 0; i < 100; i++ {
+		b.Delete(randBytes(8))
+	}
+
+	// Add items
+	kv := map[string][]byte{}
+	for i := 0; i < 1e5; i++ {
+		k := randBytes(8)
+		v := randBytes(rand.Intn(8))
+
+		b.Add(k, v)
+		kv[string(k)] = v
+
+	}
+
+	reinsert := map[string]struct{}{}
+
+	// Delete added items
+	i := 0
+	for k := range kv {
+		delete(kv, k)
+		b.Delete([]byte(k))
+
+		reinsert[k] = struct{}{}
+
+		if i == 1000 {
+			break
+		}
+		i++
+	}
+
+	// Reinsert some deleted items
+	i = 0
+	for k := range reinsert {
+		v := randBytes(rand.Intn(8))
+
+		kv[k] = v
+		b.Add([]byte(k), v)
+
+		if i == 100 {
+			break
+		}
+		i++
+	}
+
+	m := b.Build(nil)
+	for k, v := range kv {
+		vv, err := m.Get([]byte(k))
+		if !assert.Nil(t, err) {
+			break
+		}
+
+		if !assert.Equal(t, v, vv) {
+			break
+		}
+	}
+
+	assert.EqualValues(t, len(kv), m.Len())
+}
+
 func TestMapWriteRead(t *testing.T) {
 	b := NewBuilder()
 	values := make([][]byte, 1e5)
