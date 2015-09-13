@@ -1,6 +1,7 @@
 package chd
 
 import (
+	"bytes"
 	"errors"
 	"math"
 	"math/big"
@@ -10,18 +11,46 @@ import (
 )
 
 type item struct {
-	key  []byte
-	data []byte
+	key   []byte
+	value []byte
+
+	// counter is used for
+	// removing key duplicates
+	counter int
+}
+
+type items []*item
+
+func (it items) Len() int {
+	return len(it)
+}
+
+func (it items) Less(i, j int) bool {
+	cmp := bytes.Compare(it[i].key, it[j].key)
+	if cmp < 0 {
+		return true
+	} else if cmp > 0 {
+		return false
+	}
+
+	// if cmp == 0
+	return it[i].counter > it[j].counter
+}
+
+func (it items) Swap(i, j int) {
+	it[i], it[j] = it[j], it[i]
 }
 
 // Builder manages adding
 // of items and map creation.
 type Builder struct {
-	items map[string]*item
+	items items
 
 	keySize    int
 	itemSize   int
 	maxKeySize int
+
+	counter int
 }
 
 type hash struct {
@@ -38,37 +67,48 @@ type bucket struct {
 
 type buckets []bucket
 
-func (b buckets) Len() int           { return len(b) }
-func (b buckets) Less(i, j int) bool { return len(b[i].hashes) > len(b[j].hashes) }
-func (b buckets) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b buckets) Len() int {
+	return len(b)
+}
+
+func (b buckets) Less(i, j int) bool {
+	return len(b[i].hashes) > len(b[j].hashes)
+}
+
+func (b buckets) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
 
 // NewBuilder returns a new map builder.
 func NewBuilder() *Builder {
-	return &Builder{map[string]*item{}, 0, 0, 0}
+	return &Builder{}
 }
 
 // Add adds the key-value pair to the builder.
 func (b *Builder) Add(key, value []byte) {
-	data := append(key, value...)
 
+	ks := len(key)
+	is := ks + len(value)
 	if len(b.items) == 0 {
-		b.keySize = len(key)
-		b.itemSize = len(data)
+		b.keySize = ks
+		b.itemSize = is
 	}
 
-	if b.keySize != len(key) {
+	if b.keySize != ks {
 		b.keySize = -1
 	}
 
-	if b.itemSize != len(data) {
+	if b.itemSize != is {
 		b.itemSize = -1
 	}
 
-	if len(key) > b.maxKeySize {
-		b.maxKeySize = len(key)
+	if ks > b.maxKeySize {
+		b.maxKeySize = ks
 	}
 
-	b.items[string(key)] = &item{key, data}
+	item := &item{key, value, b.counter}
+	b.items = append(b.items, item)
+	b.counter++
 }
 
 // Build creates a map given a CompactArray.
@@ -77,9 +117,18 @@ func (b *Builder) Add(key, value []byte) {
 func (b *Builder) Build(array CompactArray) *Map {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	items := make([]*item, 0, len(b.items))
-	for _, v := range b.items {
-		items = append(items, v)
+	// Sort items in ascending order
+	// of keys and decreasing counter
+	sort.Sort(b.items)
+	items := make(items, 0, len(b.items))
+
+	// Remove duplicates
+	pkey := randBytes(b.maxKeySize + 1)
+	for _, item := range b.items {
+		if !bytes.Equal(pkey, item.key) {
+			items = append(items, item)
+			pkey = item.key
+		}
 	}
 
 	bucketSize := 5
@@ -218,17 +267,17 @@ func (b *Builder) build(
 		}
 
 		idata.addOffset(i, offset)
-		idata.addSize(i, len(itm.data))
 		idata.addKeySize(i, len(itm.key))
+		idata.addSize(i, len(itm.value)+len(itm.key))
 
-		offset += len(itm.data)
+		offset += len(itm.key) + len(itm.value)
 	}
 
 	// sentinel is used by the iterator
 	sentinel := []byte{}
 	if b.maxKeySize > 0 {
 		sentinel = randBytes(b.maxKeySize)
-		for _, ok := b.items[string(sentinel)]; ok; {
+		for keyExists(items, sentinel) {
 			sentinel = randBytes(b.maxKeySize)
 		}
 	}
@@ -244,7 +293,7 @@ func (b *Builder) build(
 		if itm == nil {
 			data = append(data, padding...)
 		} else {
-			data = append(data, itm.data...)
+			data = append(data, append(itm.key, itm.value...)...)
 		}
 	}
 
@@ -282,4 +331,16 @@ func randBytes(size int) []byte {
 	}
 
 	return b
+}
+
+func keyExists(items items, key []byte) bool {
+	n := sort.Search(len(items), func(i int) bool {
+		return bytes.Compare(items[i].key, key) >= 0
+	})
+
+	if n < len(items) && bytes.Equal(items[n].key, key) {
+		return true
+	}
+
+	return false
 }
