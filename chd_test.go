@@ -9,186 +9,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMapGetEmpty(t *testing.T) {
-	m := NewMap()
-	assert.Equal(t, 0, m.Len())
-
-	_, err := m.Get([]byte{0})
-	assert.NotNil(t, err)
-}
-
-func TestMapNilKey(t *testing.T) {
+func TestMapGet(t *testing.T) {
 	b := NewBuilder()
-	v := []byte{1, 2, 3}
 
-	b.Add(nil, v)
-	m := b.Build(nil)
-	assert.Equal(t, 1, m.Len())
-
-	vv, err := m.Get(nil)
-	assert.Nil(t, err)
-	assert.Equal(t, v, vv)
-}
-
-func TestMapGetOneEntry(t *testing.T) {
-	b := NewBuilder()
-	k, v := []byte{0}, []byte{1}
-	b.Add(k, v)
-
-	m := b.Build(nil)
-	assert.Equal(t, 1, m.Len())
-
-	vv, err := m.Get(k)
-	assert.Nil(t, err)
-	assert.Equal(t, v, vv)
-}
-
-func TestMapGetNilValues(t *testing.T) {
-	b := NewBuilder()
-	for i := 0; i < 1e5; i++ {
-		d := encode(i)
-		b.Add(d, nil)
-	}
-
-	m := b.Build(nil)
-	for i := 0; i < 1e5; i++ {
+	keys := [][]byte{}
+	for i := 0; i < 1e4; i++ {
 		k := encode(i)
-		v, err := m.Get(k)
 
-		if !assert.Nil(t, err) {
-			break
-		}
-
-		if !assert.Empty(t, v) {
-			break
-		}
-	}
-
-	assert.EqualValues(t, 1e5, m.Len())
-}
-
-func TestMapGetFixedKeySize(t *testing.T) {
-	b := NewBuilder()
-	values := make([][]byte, 1e5)
-	for i := 0; i < 1e5; i++ {
-		k := encode(i)
-		v := randBytes(rand.Intn(10))
-
-		values[i] = v
-		b.Add(k, v)
+		b.Add(k)
+		keys = append(keys, k)
 	}
 
 	m := b.Build(nil)
-	assert.NotEqual(t, -1, m.keySize)
+	occupied := make([]bool, m.Cap())
+	for _, k := range keys {
+		idx := m.Get(k)
 
-	for i := 0; i < 1e5; i++ {
-		k := encode(i)
-		v, err := m.Get(k)
-
-		if !assert.Nil(t, err) {
+		// Key index must be unique for every key
+		if !assert.False(t, occupied[idx]) {
 			break
 		}
-
-		if !assert.Equal(t, values[i], v) {
-			break
-		}
+		occupied[idx] = true
 	}
 
-	assert.EqualValues(t, 1e5, m.Len())
-}
-
-func TestMapGetFixedKeyValueSize(t *testing.T) {
-	b := NewBuilder()
-	for i := 0; i < 1e5; i++ {
-		d := encode(i)
-		b.Add(d, d)
-	}
-
-	m := b.Build(nil)
-	assert.NotEqual(t, -1, m.keySize)
-	assert.NotEqual(t, -1, m.itemSize)
-
-	for i := 0; i < 1e5; i++ {
-		k := encode(i)
-		v, err := m.Get(k)
-
-		if !assert.Nil(t, err) {
-			break
-		}
-
-		if !assert.Equal(t, i, decode(v)) {
-			break
-		}
-	}
-
-	assert.EqualValues(t, 1e5, m.Len())
-}
-
-func TestMapGetRandKeyValueSize(t *testing.T) {
-	b := NewBuilder()
-
-	kv := map[string][]byte{}
-	for i := 0; i < 1e5; i++ {
-		k := randBytes(rand.Intn(10) + 1)
-		v := randBytes(rand.Intn(10))
-
-		kv[string(k)] = v
-		b.Add(k, v)
-	}
-
-	m := b.Build(nil)
-	assert.Equal(t, -1, m.keySize)
-	assert.Equal(t, -1, m.itemSize)
-
-	for k, v := range kv {
-		vv, err := m.Get([]byte(k))
-
-		if !assert.Nil(t, err) {
-			break
-		}
-
-		if !assert.Equal(t, v, vv) {
-			break
-		}
-	}
-
-	assert.EqualValues(t, len(kv), m.Len())
-}
-
-func TestMapGetHitMiss(t *testing.T) {
-	b := NewBuilder()
-
-	kv := map[string][]byte{}
-	for i := 0; i < 1e5; i++ {
-		k := randBytes(rand.Intn(3) + 1)
-		v := randBytes(rand.Intn(10))
-
-		kv[string(k)] = v
-		b.Add(k, v)
-	}
-
-	m := b.Build(nil)
-	for i := 0; i < 1e6; i++ {
-		k := randBytes(rand.Intn(3) + 1)
-
-		v, ok := kv[string(k)]
-		vv, err := m.Get(k)
-		if ok {
-			if !assert.Nil(t, err) {
-				break
-			}
-
-			if !assert.Equal(t, v, vv) {
-				break
-			}
-		} else {
-			if !assert.NotNil(t, err) {
-				break
-			}
-		}
-	}
-
-	assert.EqualValues(t, len(kv), m.Len())
+	assert.EqualValues(t, len(keys), m.Len())
 }
 
 func TestMapDelete(t *testing.T) {
@@ -200,22 +44,19 @@ func TestMapDelete(t *testing.T) {
 	}
 
 	// Add items
-	kv := map[string][]byte{}
-	for i := 0; i < 1e5; i++ {
-		k := randBytes(8)
-		v := randBytes(rand.Intn(8))
+	keys := map[string]struct{}{}
+	for i := 0; i < 1e4; i++ {
+		k := encode(i)
 
-		b.Add(k, v)
-		kv[string(k)] = v
-
+		b.Add(k)
+		keys[string(k)] = struct{}{}
 	}
-
-	reinsert := map[string]struct{}{}
 
 	// Delete added items
 	i := 0
-	for k := range kv {
-		delete(kv, k)
+	reinsert := map[string]struct{}{}
+	for k := range keys {
+		delete(keys, k)
 		b.Delete([]byte(k))
 
 		reinsert[k] = struct{}{}
@@ -229,43 +70,45 @@ func TestMapDelete(t *testing.T) {
 	// Reinsert some deleted items
 	i = 0
 	for k := range reinsert {
-		v := randBytes(rand.Intn(8))
+		keys[k] = struct{}{}
+		b.Add([]byte(k))
 
-		kv[k] = v
-		b.Add([]byte(k), v)
-
-		if i == 100 {
+		if i == 500 {
 			break
 		}
 		i++
 	}
 
 	m := b.Build(nil)
-	for k, v := range kv {
-		vv, err := m.Get([]byte(k))
-		if !assert.Nil(t, err) {
-			break
-		}
+	occupied := make([]bool, m.Cap())
+	for k := range keys {
+		idx := m.Get([]byte(k))
 
-		if !assert.Equal(t, v, vv) {
+		// Key index must be unique for every key
+		if !assert.False(t, occupied[idx]) {
 			break
 		}
+		occupied[idx] = true
 	}
 
-	assert.EqualValues(t, len(kv), m.Len())
+	assert.EqualValues(t, len(keys), m.Len())
 }
 
 func TestMapWriteRead(t *testing.T) {
 	b := NewBuilder()
-	values := make([][]byte, 1e5)
-	for i := 0; i < 1e5; i++ {
-		k := encode(i)
-		v := randBytes(10)
 
-		values[i] = v
-		b.Add(k, v)
+	keys := map[string]int{}
+	for i := 0; i < 1e4; i++ {
+		k := encode(i)
+
+		keys[string(k)] = -1
+		b.Add(k)
 	}
+
 	m := b.Build(nil)
+	for k := range keys {
+		keys[k] = m.Get([]byte(k))
+	}
 
 	buf := &bytes.Buffer{}
 	err := m.Write(buf)
@@ -275,118 +118,13 @@ func TestMapWriteRead(t *testing.T) {
 	err = mm.Read(buf, nil)
 	assert.Nil(t, err)
 
-	for i := 0; i < 1e5; i++ {
-		k := encode(i)
-		v, err := mm.Get(k)
-
-		if !assert.Nil(t, err) {
-			break
-		}
-
-		if !assert.Equal(t, values[i], v) {
+	for k, i := range keys {
+		if !assert.Equal(t, i, mm.Get([]byte(k))) {
 			break
 		}
 	}
 
-	assert.EqualValues(t, 1e5, mm.Len())
-}
-
-func TestIteratorEmpty(t *testing.T) {
-	it := NewBuilder().Build(nil).Iterator()
-	assert.Nil(t, it)
-
-	it = NewMap().Iterator()
-	assert.Nil(t, it)
-}
-
-func TestIteratorOneEntry(t *testing.T) {
-	b := NewBuilder()
-	k, v := []byte{0}, []byte{1}
-
-	b.Add(k, v)
-	it := b.Build(nil).Iterator()
-
-	assert.NotNil(t, it)
-	assert.Equal(t, k, it.Key())
-	assert.Equal(t, v, it.Value())
-	assert.Nil(t, it.Next())
-}
-
-func TestIteratorFixedKeySize(t *testing.T) {
-	b := NewBuilder()
-	values := make([][]byte, 1e5)
-	for i := 0; i < 1e5; i++ {
-		k := encode(i)
-		v := randBytes(rand.Intn(10))
-
-		values[i] = v
-		b.Add(k, v)
-	}
-	m := b.Build(nil)
-
-	n := 0
-	for it := m.Iterator(); it != nil; it = it.Next() {
-		k := decode(it.Key())
-		v := it.Value()
-
-		if !assert.Equal(t, values[k], v) {
-			break
-		}
-		n++
-	}
-
-	assert.EqualValues(t, 1e5, n)
-}
-
-func TestIteratorFixedKeyValueSize(t *testing.T) {
-	b := NewBuilder()
-	values := make([]int, 1e5)
-	for i := 0; i < 1e5; i++ {
-		k := encode(i)
-		values[i] = i
-		b.Add(k, k)
-	}
-	m := b.Build(nil)
-
-	n := 0
-	for it := m.Iterator(); it != nil; it = it.Next() {
-		k := decode(it.Key())
-		v := decode(it.Value())
-
-		if !assert.Equal(t, values[k], v) {
-			break
-		}
-		n++
-	}
-
-	assert.EqualValues(t, 1e5, n)
-}
-
-func TestIteratorRandKeyValueSize(t *testing.T) {
-	b := NewBuilder()
-
-	kv := map[string][]byte{}
-	for i := 0; i < 1e5; i++ {
-		k := randBytes(rand.Intn(10) + 1)
-		v := randBytes(rand.Intn(10))
-
-		kv[string(k)] = v
-		b.Add(k, v)
-	}
-	m := b.Build(nil)
-
-	n := 0
-	for it := m.Iterator(); it != nil; it = it.Next() {
-		k := it.Key()
-		v := it.Value()
-
-		if !assert.Equal(t, kv[string(k)], v) {
-			break
-		}
-		n++
-	}
-
-	assert.Equal(t, len(kv), n)
+	assert.EqualValues(t, m.Len(), mm.Len())
 }
 
 // BenchmarkMapGet measures the average running
@@ -396,10 +134,10 @@ func BenchmarkMapGetIntArray(b *testing.B) {
 	keys := make([][]byte, 1e5)
 
 	for i := range keys {
-		k := randBytes(rand.Intn(8) + 1)
+		k := encode(i)
 
 		keys[i] = k
-		builder.Add(k, nil)
+		builder.Add(k)
 	}
 	m := builder.Build(nil)
 
@@ -421,10 +159,10 @@ func BenchmarkMapGetFibArray(b *testing.B) {
 	keys := make([][]byte, 1e5)
 
 	for i := range keys {
-		k := randBytes(rand.Intn(8) + 1)
+		k := encode(i)
 
 		keys[i] = k
-		builder.Add(k, nil)
+		builder.Add(k)
 	}
 	m := builder.Build(NewFibArray())
 

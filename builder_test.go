@@ -1,24 +1,11 @@
 package chd
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-)
-
-func TestBuilderEmpty(t *testing.T) {
-	b := NewBuilder()
-	m := b.Build(nil)
-	assert.Equal(t, 0, m.Len())
-
-	_, err := m.Get([]byte{0})
-	assert.NotNil(t, err)
-}
+import "testing"
 
 func benchmarkBuild(b *testing.B, nkeys int) {
 	builder := NewBuilder()
 	for i := 0; i < nkeys; i++ {
-		builder.Add(encode(i), nil)
+		builder.Add(encode(i))
 	}
 
 	b.ResetTimer()

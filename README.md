@@ -25,33 +25,44 @@ minutes) to finish.
 ```go
 import "github.com/robskie/chd"
 
-// Create a new builder
-b := chd.NewBuilder()
+// Sample Item structure
+type Item struct {
+  Key   string
+  Value int
+}
 
-// Add your items to the builder
-for key, value := range data {
-  b.Add(key, value)
+items := []Item{
+  {"ab", 0},
+  {"cd", 1},
+  {"ef", 2},
+  {"gh", 3},
+  {"ij", 4},
+  {"kl", 5},
+}
+
+// Create a builder and add keys to it
+builder := NewBuilder()
+for _, item := range items {
+  builder.Add([]byte(item.Key))
 }
 
 // Build the map
-m := b.Build(nil)
+m := builder.Build(nil)
 
-// Do something useful with the map
-```
+// Rearrange items according to its map index
+items = append(items, make([]Item, m.Cap()-len(items))...)
+for i := 0; i < len(items); {
+  idx := m.Get([]byte(items[i].key))
 
-To iterate over the key-value pairs, you can get an iterator by calling the
-Map.Iterator method.
+  if i != idx && len(items[i].key) > 0 {
+    items[i], items[idx] = items[idx], items[i]
+    continue
+  }
 
-```go
-// Iterate over key-value pairs
-for it := m.Iterator(); it != nil; it = it.Next() {
-  key := it.Key()
-  value := it.Value()
-
-  // Do something useful with key/value
+  i++
 }
 
-
+// Do something useful
 ```
 
 You can also serialize a map and deserialize it later by using Map.Read and

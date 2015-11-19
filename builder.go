@@ -11,8 +11,7 @@ import (
 )
 
 type item struct {
-	key   []byte
-	value []byte
+	key []byte
 
 	// counter is used for
 	// removing key duplicates
@@ -48,11 +47,8 @@ func (it items) Swap(i, j int) {
 type Builder struct {
 	items items
 
-	keySize    int
-	itemSize   int
 	maxKeySize int
-
-	counter int
+	counter    int
 }
 
 type hash struct {
@@ -86,36 +82,21 @@ func NewBuilder() *Builder {
 	return &Builder{}
 }
 
-// Add adds the key-value pair to the builder.
-func (b *Builder) Add(key, value []byte) {
-
-	ks := len(key)
-	is := ks + len(value)
-	if len(b.items) == 0 {
-		b.keySize = ks
-		b.itemSize = is
-	}
-
-	if b.keySize != ks {
-		b.keySize = -1
-	}
-
-	if b.itemSize != is {
-		b.itemSize = -1
-	}
-
-	if ks > b.maxKeySize {
-		b.maxKeySize = ks
-	}
-
-	item := &item{key, value, b.counter, false}
+// Add adds a given key to the builder.
+func (b *Builder) Add(key []byte) {
+	item := &item{key, b.counter, false}
 	b.items = append(b.items, item)
+
+	if len(key) > b.maxKeySize {
+		b.maxKeySize = len(key)
+	}
+
 	b.counter++
 }
 
 // Delete removes the item with the given key.
 func (b *Builder) Delete(key []byte) {
-	item := &item{key, nil, b.counter, true}
+	item := &item{key, b.counter, true}
 	b.items = append(b.items, item)
 	b.counter++
 }
@@ -209,7 +190,7 @@ func (b *Builder) build(
 	sort.Sort(buckets)
 
 	ts := uint64(tableSize)
-	table := make([]*item, ts)
+	occupied := make([]bool, ts)
 
 	maxHashIdx := ts * ts
 	indices := make([]uint64, 0, len(buckets[0].hashes))
@@ -241,18 +222,18 @@ func (b *Builder) build(
 			for _, h := range b.hashes {
 				idx := (h.h2 + (d0 * h.h3) + d1) % ts
 
-				if table[idx] != nil {
+				if occupied[idx] {
 					// Collission has occured, clear
 					// table of previously added items
 					for _, n := range indices {
-						table[n] = nil
+						occupied[n] = false
 					}
 
 					hidx++
 					continue NextHashIdx
 				}
 
-				table[idx] = h.item
+				occupied[idx] = true
 				indices = append(indices, idx)
 			}
 
@@ -269,53 +250,8 @@ func (b *Builder) build(
 		array.Add(int(idx))
 	}
 
-	offset := 0
-	idata := newItemData(tableSize, b.itemSize, b.keySize)
-	for i, itm := range table {
-		if itm == nil {
-			// Add sentinel
-			idata.addSize(i, -1)
-			continue
-		}
-
-		idata.addOffset(i, offset)
-		idata.addKeySize(i, len(itm.key))
-		idata.addSize(i, len(itm.value)+len(itm.key))
-
-		offset += len(itm.key) + len(itm.value)
-	}
-
-	// sentinel is used by the iterator
-	sentinel := []byte{}
-	if b.maxKeySize > 0 {
-		sentinel = randBytes(b.maxKeySize)
-		for keyExists(items, sentinel) {
-			sentinel = randBytes(b.maxKeySize)
-		}
-	}
-
-	var padding []byte
-	if b.itemSize > 0 {
-		padding = make([]byte, b.itemSize-len(sentinel))
-		padding = append(sentinel, padding...)
-	}
-
-	data := make([]byte, 0, offset)
-	for _, itm := range table {
-		if itm == nil {
-			data = append(data, padding...)
-		} else {
-			data = append(data, append(itm.key, itm.value...)...)
-		}
-	}
-
 	m := &Map{
 		seed,
-		data,
-		idata,
-		b.keySize,
-		b.itemSize,
-		sentinel,
 		len(items),
 		tableSize,
 		array,
