@@ -20,7 +20,7 @@ type item struct {
 	deleted bool
 }
 
-type items []*item
+type items []item
 
 func (it items) Len() int {
 	return len(it)
@@ -52,15 +52,13 @@ type Builder struct {
 }
 
 type hash struct {
-	h1   uint64
-	h2   uint64
-	h3   uint64
-	item *item
+	h1 uint64
+	h2 uint64
 }
 
 type bucket struct {
 	index  uint64
-	hashes []*hash
+	hashes []hash
 }
 
 type buckets []bucket
@@ -84,7 +82,7 @@ func NewBuilder() *Builder {
 
 // Add adds a given key to the builder.
 func (b *Builder) Add(key []byte) {
-	item := &item{key, b.counter, false}
+	item := item{key, b.counter, false}
 	b.items = append(b.items, item)
 
 	if len(key) > b.maxKeySize {
@@ -96,7 +94,7 @@ func (b *Builder) Add(key []byte) {
 
 // Delete removes the item with the given key.
 func (b *Builder) Delete(key []byte) {
-	item := &item{key, b.counter, true}
+	item := item{key, b.counter, true}
 	b.items = append(b.items, item)
 	b.counter++
 }
@@ -164,26 +162,22 @@ func (b *Builder) build(
 	seed [2]uint64,
 	bucketSize,
 	tableSize int,
-	items []*item,
+	items []item,
 	array CompactArray) (*Map, error) {
 
 	nbuckets := uint64(len(items)/bucketSize) + 1
 	buckets := make(buckets, nbuckets)
-
-	hashes := make([]*hash, len(items))
 	hashIdx := make([]uint64, nbuckets)
 
-	// Calculate hashes
-	for i := range hashes {
+	// Calculate hashes and put them into their designated buckets
+	for i := range items {
 		h1, h2, h3, _ := spookyHash(items[i].key, seed[0], seed[1])
-		hashes[i] = &hash{h1, h2, h3, items[i]}
-	}
 
-	// Put hashes into buckets
-	for _, h := range hashes {
-		bidx := h.h1 % nbuckets
+		hash := hash{h2, h3}
+		bidx := h1 % nbuckets
+
 		buckets[bidx].index = bidx
-		buckets[bidx].hashes = append(buckets[bidx].hashes, h)
+		buckets[bidx].hashes = append(buckets[bidx].hashes, hash)
 	}
 
 	// Sort buckets in decreasing size
@@ -220,7 +214,7 @@ func (b *Builder) build(
 
 			indices = indices[:0]
 			for _, h := range b.hashes {
-				idx := (h.h2 + (d0 * h.h3) + d1) % ts
+				idx := (h.h1 + (d0 * h.h2) + d1) % ts
 
 				if occupied[idx] {
 					// Collission has occured, clear
@@ -242,7 +236,7 @@ func (b *Builder) build(
 		}
 	}
 
-	// Construct Map fields
+	// Construct hash array
 	if array == nil {
 		array = newIntArray(len(hashIdx))
 	}
