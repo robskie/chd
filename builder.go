@@ -165,6 +165,7 @@ func (b *Builder) build(
 	items []item,
 	array CompactArray) (*Map, error) {
 
+	ts := uint64(tableSize)
 	nbuckets := uint64(len(items)/bucketSize) + 1
 	buckets := make(buckets, nbuckets)
 	hashIdx := make([]uint64, nbuckets)
@@ -173,9 +174,11 @@ func (b *Builder) build(
 	for i := range items {
 		h1, h2, h3, _ := spookyHash(items[i].key, seed[0], seed[1])
 
+		h2 %= ts
+		h3 %= ts
 		hash := hash{h2, h3}
-		bidx := h1 % nbuckets
 
+		bidx := h1 % nbuckets
 		buckets[bidx].index = bidx
 		buckets[bidx].hashes = append(buckets[bidx].hashes, hash)
 	}
@@ -183,10 +186,8 @@ func (b *Builder) build(
 	// Sort buckets in decreasing size
 	sort.Sort(buckets)
 
-	ts := uint64(tableSize)
-	occupied := make([]bool, ts)
-
 	maxHashIdx := ts * ts
+	occupied := make([]bool, ts)
 	indices := make([]uint64, 0, len(buckets[0].hashes))
 
 	// Process buckets and populate table

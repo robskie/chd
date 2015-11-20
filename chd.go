@@ -45,6 +45,9 @@ func (m *Map) Get(key []byte) int {
 	hidx := uint64(hashes.Get(int(h1 % hlen)))
 
 	tableSize := uint64(m.tableSize)
+
+	h2 %= tableSize
+	h3 %= tableSize
 	d0 := hidx / tableSize
 	d1 := hidx % tableSize
 	idx := int((h2 + (d0 * h3) + d1) % tableSize)
