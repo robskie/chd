@@ -108,23 +108,24 @@ func (b *Builder) Build(array CompactArray) *Map {
 	// Sort items in ascending order
 	// of keys and decreasing counter
 	sort.Sort(b.items)
-	items := make(items, 0, len(b.items))
 
-	// Remove duplicates and deleted items
+	// Remove duplicates and deleted items by
+	// moving them to the front and then slicing
+	front := 0
 	pkey := randBytes(b.maxKeySize + 1)
-	for _, item := range b.items {
-		if !bytes.Equal(pkey, item.key) {
-			if !item.deleted {
-				items = append(items, item)
-			}
-
-			pkey = item.key
+	for i, item := range b.items {
+		if bytes.Equal(pkey, item.key) || item.deleted {
+			b.items[front], b.items[i] = b.items[i], b.items[front]
+			front++
 		}
+
+		pkey = item.key
 	}
+	b.items = b.items[front:]
 
 	bucketSize := 5
 	loadFactor := 1.0
-	tableSize := int(float64(len(items)) / loadFactor)
+	tableSize := int(float64(len(b.items)) / loadFactor)
 	tableSize = nearestPrime(tableSize)
 
 	// Try and try until successful
@@ -136,7 +137,7 @@ func (b *Builder) Build(array CompactArray) *Map {
 				uint64(rand.Int63()),
 			}
 
-			m, err := b.build(seed, bucketSize, tableSize, items, array)
+			m, err := b.build(seed, bucketSize, tableSize, b.items, array)
 			if err == nil {
 				return m
 			}
@@ -150,7 +151,7 @@ func (b *Builder) Build(array CompactArray) *Map {
 			bucketSize = 5
 			loadFactor *= 0.90
 
-			tableSize = int(float64(len(items)) / loadFactor)
+			tableSize = int(float64(len(b.items)) / loadFactor)
 			tableSize = nearestPrime(tableSize)
 		}
 	}
