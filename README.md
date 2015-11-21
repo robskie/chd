@@ -15,11 +15,9 @@ go get github.com/robskie/chd
 
 To create a map, you need to first use a map builder which is where you will
 add your items. After you have added all your items, you'll need to call Build
-from the map builder to create a map. You will need to supply an array that
-implements CompactArray interface to this method or nil to use a plain integer
-array instead. If you have a large number of items, like more than a hundred
-thousand, building the map would take a while (from a few seconds to several
-minutes) to finish.
+from the map builder to create a map. If you have a large number of items, like
+more than a hundred thousand, building the map would take a while (from a few
+seconds to several minutes) to finish.
 
 ```go
 import "github.com/robskie/chd"
@@ -40,13 +38,13 @@ items := []Item{
 }
 
 // Create a builder and add keys to it
-builder := NewBuilder()
+builder := NewBuilder(nil)
 for _, item := range items {
   builder.Add([]byte(item.Key))
 }
 
 // Build the map
-m := builder.Build(nil)
+m := builder.Build()
 
 // Rearrange items according to its map index
 items = append(items, make([]Item, m.Cap()-len(items))...)
@@ -77,7 +75,7 @@ m.Write(w)
 // Afterwards, you can deserialize it
 r, _ := os.Open("mymap.dat")
 nm := chd.NewMap()
-nm.Read(r, nil)
+nm.Read(r)
 
 // Do something useful with the map
 ```

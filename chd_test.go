@@ -10,7 +10,7 @@ import (
 )
 
 func TestMapGet(t *testing.T) {
-	b := NewBuilder()
+	b := NewBuilder(nil)
 
 	keys := [][]byte{}
 	for i := 0; i < 1e4; i++ {
@@ -20,7 +20,7 @@ func TestMapGet(t *testing.T) {
 		keys = append(keys, k)
 	}
 
-	m := b.Build(nil)
+	m, _ := b.Build()
 	occupied := make([]bool, m.Cap())
 	for _, k := range keys {
 		idx := m.Get(k)
@@ -36,7 +36,7 @@ func TestMapGet(t *testing.T) {
 }
 
 func TestMapDelete(t *testing.T) {
-	b := NewBuilder()
+	b := NewBuilder(nil)
 
 	// Delete items that weren't added
 	for i := 0; i < 100; i++ {
@@ -79,7 +79,7 @@ func TestMapDelete(t *testing.T) {
 		i++
 	}
 
-	m := b.Build(nil)
+	m, _ := b.Build()
 	occupied := make([]bool, m.Cap())
 	for k := range keys {
 		idx := m.Get([]byte(k))
@@ -95,7 +95,7 @@ func TestMapDelete(t *testing.T) {
 }
 
 func TestMapWriteRead(t *testing.T) {
-	b := NewBuilder()
+	b := NewBuilder(nil)
 
 	keys := map[string]int{}
 	for i := 0; i < 1e4; i++ {
@@ -105,7 +105,7 @@ func TestMapWriteRead(t *testing.T) {
 		b.Add(k)
 	}
 
-	m := b.Build(nil)
+	m, _ := b.Build()
 	for k := range keys {
 		keys[k] = m.Get([]byte(k))
 	}
@@ -115,7 +115,7 @@ func TestMapWriteRead(t *testing.T) {
 	assert.Nil(t, err)
 
 	mm := NewMap()
-	err = mm.Read(buf, nil)
+	err = mm.Read(buf)
 	assert.Nil(t, err)
 
 	for k, i := range keys {
@@ -130,7 +130,7 @@ func TestMapWriteRead(t *testing.T) {
 // BenchmarkMapGet measures the average running
 // time of Map.Get operations using an IntArray.
 func BenchmarkMapGet100KKeys(b *testing.B) {
-	builder := NewBuilder()
+	builder := NewBuilder(nil)
 	keys := make([][]byte, 1e5)
 
 	for i := range keys {
@@ -139,7 +139,7 @@ func BenchmarkMapGet100KKeys(b *testing.B) {
 		keys[i] = k
 		builder.Add(k)
 	}
-	m := builder.Build(nil)
+	m, _ := builder.Build()
 
 	kidx := make([]int, b.N)
 	for i := range kidx {

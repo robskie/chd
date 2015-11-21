@@ -25,7 +25,7 @@ type Map struct {
 // NewMap returns an empty map.
 // Call Map.Read to populate it.
 func NewMap() *Map {
-	return &Map{hashes: newIntArray(0)}
+	return &Map{}
 }
 
 // Get returns the index of a given key. This will
@@ -69,22 +69,15 @@ func (m *Map) Write(w io.Writer) error {
 	return nil
 }
 
-// Read deserializes a map. Note that array must
-// be a pointer and should have the same type as
-// the one used in serializing the map. If array
-// is nil, it will use a plain integer array instead.
-func (m *Map) Read(r io.Reader, array CompactArray) error {
+// Read deserializes a map.
+func (m *Map) Read(r io.Reader) error {
 	dec := gob.NewDecoder(r)
 
 	dec.Decode(&m.seed)
 	dec.Decode(&m.length)
 	dec.Decode(&m.tableSize)
 
-	if array == nil {
-		array = newIntArray(0)
-	}
-	m.hashes = array
-
+	m.hashes = newCompactArray()
 	if err := dec.Decode(m.hashes); err != nil {
 		return fmt.Errorf("chd: read failed (%v)", err)
 	}

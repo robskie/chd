@@ -10,6 +10,38 @@ import (
 	"time"
 )
 
+// BuildOptions specifies the
+// options for building a map.
+type BuildOptions struct {
+	// LoadFactor sets the load
+	// factor. Lower values results
+	// in faster build times. Default
+	// value is 1.0
+	//
+	// If ForceBuild is enabled the
+	// actual load factor may differ
+	// significantly from the set value.
+	LoadFactor float64
+
+	// BucketSize sets the average
+	// number of keys per bucket.
+	// Default value is 5.
+	BucketSize int
+
+	// ForceBuild indicates that the
+	// Builder.Build method will always
+	// succeed. This is done by decreasing
+	// the load factor every time it fails.
+	// Default value is true.
+	ForceBuild bool
+}
+
+// NewBuildOptions creates build
+// options with default values.
+func NewBuildOptions() *BuildOptions {
+	return &BuildOptions{1.0, 5, true}
+}
+
 type item struct {
 	key []byte
 
@@ -49,6 +81,8 @@ type Builder struct {
 
 	maxKeySize int
 	counter    int
+
+	opts *BuildOptions
 }
 
 type hash struct {
@@ -75,9 +109,19 @@ func (b buckets) Swap(i, j int) {
 	b[i], b[j] = b[j], b[i]
 }
 
-// NewBuilder returns a new map builder.
-func NewBuilder() *Builder {
-	return &Builder{}
+// NewBuilder returns a new map builder given
+// the build options. If opts is nil, the default
+// values are used.
+func NewBuilder(opts *BuildOptions) *Builder {
+	if opts == nil {
+		opts = NewBuildOptions()
+	}
+
+	if opts.LoadFactor > 1.0 || opts.LoadFactor <= 0.0 {
+		panic("chd: invalid load factor")
+	}
+
+	return &Builder{opts: opts}
 }
 
 // Add adds a given key to the builder.
@@ -99,10 +143,8 @@ func (b *Builder) Delete(key []byte) {
 	b.counter++
 }
 
-// Build creates a map given a CompactArray.
-// If array is nil, it will use a plain integer
-// array instead. Note that array must be gob encodable.
-func (b *Builder) Build(array CompactArray) *Map {
+// Build creates a map.
+func (b *Builder) Build() (m *Map, err error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	// Sort items in ascending order
@@ -123,8 +165,7 @@ func (b *Builder) Build(array CompactArray) *Map {
 	}
 	b.items = b.items[front:]
 
-	bucketSize := 5
-	loadFactor := 1.0
+	loadFactor := b.opts.LoadFactor
 	tableSize := int(float64(len(b.items)) / loadFactor)
 	tableSize = nearestPrime(tableSize)
 
@@ -137,22 +178,20 @@ func (b *Builder) Build(array CompactArray) *Map {
 				uint64(rand.Int63()),
 			}
 
-			m, err := b.build(seed, bucketSize, tableSize, b.items, array)
+			m, err = b.build(seed, b.opts.BucketSize, tableSize, b.items)
 			if err == nil {
-				return m
+				return m, nil
 			}
 		}
 
-		// If unsuccessful, reduce the bucket
-		// size first and then the load factor
-		if bucketSize > 1 {
-			bucketSize--
-		} else {
-			bucketSize = 5
+		// If ForceBuild is enabled, reduce load factor and try again
+		if b.opts.ForceBuild {
 			loadFactor *= 0.90
 
 			tableSize = int(float64(len(b.items)) / loadFactor)
 			tableSize = nearestPrime(tableSize)
+		} else {
+			return nil, err
 		}
 	}
 }
@@ -163,8 +202,7 @@ func (b *Builder) build(
 	seed [2]uint64,
 	bucketSize,
 	tableSize int,
-	items []item,
-	array CompactArray) (*Map, error) {
+	items []item) (*Map, error) {
 
 	ts := uint64(tableSize)
 	nbuckets := uint64(len(items)/bucketSize) + 1
@@ -239,9 +277,7 @@ func (b *Builder) build(
 	}
 
 	// Construct hash array
-	if array == nil {
-		array = newIntArray(len(hashIdx))
-	}
+	array := newCompactArray()
 	for _, idx := range hashIdx {
 		array.Add(int(idx))
 	}

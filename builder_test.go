@@ -3,14 +3,14 @@ package chd
 import "testing"
 
 func benchmarkBuild(b *testing.B, nkeys int) {
-	builder := NewBuilder()
+	builder := NewBuilder(nil)
 	for i := 0; i < nkeys; i++ {
 		builder.Add(encode(i))
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		builder.Build(nil)
+		builder.Build()
 	}
 }
 
