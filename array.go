@@ -1,10 +1,6 @@
 package chd
 
-import (
-	"unsafe"
-
-	"github.com/robskie/fibvec"
-)
+import "unsafe"
 
 // CompactArray represents a
 // compressed integer array.
@@ -38,26 +34,4 @@ func (a intArray) Len() int {
 func (a intArray) Size() int {
 	sizeofInt := int(unsafe.Sizeof(int(0)))
 	return len(a) * sizeofInt
-}
-
-// FibArray is a wrapper to a fibonacci
-// vector that implements CompactArray
-// interface.
-type FibArray struct {
-	*fibvec.Vector
-}
-
-// NewFibArray returns a new FibArray.
-func NewFibArray() *FibArray {
-	return &FibArray{fibvec.NewVector()}
-}
-
-// Add adds a new value.
-func (f *FibArray) Add(value int) {
-	f.Vector.Add(uint(value))
-}
-
-// Get returns the value at the given index.
-func (f *FibArray) Get(index int) int {
-	return int(f.Vector.Get(index))
 }

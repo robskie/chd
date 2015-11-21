@@ -1,7 +1,6 @@
 // Package chd implements the compress, hash, and displace (CHD) minimal perfect
 // hash algorithm. It provides a map builder that manages adding of items and
-// map creation. It also provides a fibonacci array that can be used to further
-// optimize memory usage.
+// map creation.
 //
 // See http://cmph.sourceforge.net/papers/esa09.pdf for more details.
 package chd

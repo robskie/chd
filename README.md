@@ -2,8 +2,7 @@
 
 Package chd implements the compress, hash, and displace (CHD) minimal perfect
 hash algorithm described in [Hash, displace, and compress][1] by Botelho et al.
-It provides a map builder that manages adding of items and map creation. It also
-provides a fibonacci array that can be used to further optimize memory usage.
+It provides a map builder that manages adding of items and map creation.
 
 [1]: http://cmph.sourceforge.net/papers/esa09.pdf
 
@@ -62,7 +61,7 @@ for i := 0; i < len(items); {
   i++
 }
 
-// Do something useful
+// Do something useful with the map
 ```
 
 You can also serialize a map and deserialize it later by using Map.Read and
@@ -100,9 +99,8 @@ You can run these benchmarks on your machine by typing this command
 ```go test github.com/robskie/chd -bench=.*``` in terminal.
 
 ```
-BenchmarkBuild10KKeys         30       54484991 ns/op
-BenchmarkBuild100KKeys         2      754017901 ns/op
-BenchmarkBuild1MKeys           1    16064924548 ns/op
-BenchmarkMapGetIntArray  5000000            346 ns/op
-BenchmarkMapGetFibArray  2000000            711 ns/op
+BenchmarkBuild10KKeys-4           30       46166731 ns/op
+BenchmarkBuild100KKeys-4           2      672838604 ns/op
+BenchmarkBuild1MKeys-4             1    13144765689 ns/op
+BenchmarkMapGet100KKeys-4   10000000            221 ns/op
 ```

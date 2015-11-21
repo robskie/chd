@@ -129,7 +129,7 @@ func TestMapWriteRead(t *testing.T) {
 
 // BenchmarkMapGet measures the average running
 // time of Map.Get operations using an IntArray.
-func BenchmarkMapGetIntArray(b *testing.B) {
+func BenchmarkMapGet100KKeys(b *testing.B) {
 	builder := NewBuilder()
 	keys := make([][]byte, 1e5)
 
@@ -140,31 +140,6 @@ func BenchmarkMapGetIntArray(b *testing.B) {
 		builder.Add(k)
 	}
 	m := builder.Build(nil)
-
-	kidx := make([]int, b.N)
-	for i := range kidx {
-		kidx[i] = rand.Intn(len(keys))
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		m.Get(keys[kidx[i]])
-	}
-}
-
-// BenchmarkMapGet measures the average running
-// time of Map.Get operations using a FibArray.
-func BenchmarkMapGetFibArray(b *testing.B) {
-	builder := NewBuilder()
-	keys := make([][]byte, 1e5)
-
-	for i := range keys {
-		k := encode(i)
-
-		keys[i] = k
-		builder.Add(k)
-	}
-	m := builder.Build(NewFibArray())
 
 	kidx := make([]int, b.N)
 	for i := range kidx {
