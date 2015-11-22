@@ -77,12 +77,9 @@ func (it items) Swap(i, j int) {
 // Builder manages adding
 // of items and map creation.
 type Builder struct {
-	items items
-
-	maxKeySize int
-	counter    int
-
-	opts *BuildOptions
+	items   items
+	counter int
+	opts    *BuildOptions
 }
 
 type hash struct {
@@ -129,10 +126,6 @@ func (b *Builder) Add(key []byte) {
 	item := item{key, b.counter, false}
 	b.items = append(b.items, item)
 
-	if len(key) > b.maxKeySize {
-		b.maxKeySize = len(key)
-	}
-
 	b.counter++
 }
 
@@ -154,10 +147,10 @@ func (b *Builder) Build() (m *Map, err error) {
 	// Remove duplicates and deleted items by
 	// moving them to the front and then slicing
 	front := 0
-	pkey := randBytes(b.maxKeySize + 1)
-	for i, item := range b.items {
+	pkey := b.items[0].key
+	for i, item := range b.items[1:] {
 		if bytes.Equal(pkey, item.key) || item.deleted {
-			b.items[front], b.items[i] = b.items[i], b.items[front]
+			b.items[front], b.items[i+1] = b.items[i+1], b.items[front]
 			front++
 		}
 
@@ -169,7 +162,7 @@ func (b *Builder) Build() (m *Map, err error) {
 	tableSize := int(float64(len(b.items)) / loadFactor)
 	tableSize = nearestPrime(tableSize)
 
-	// Try and try until successful
+	// Try building the map
 	for {
 		const numTries = 3
 		for i := 0; i < numTries; i++ {
@@ -207,7 +200,7 @@ func (b *Builder) build(
 	ts := uint64(tableSize)
 	nbuckets := uint64(len(items)/bucketSize) + 1
 	buckets := make(buckets, nbuckets)
-	hashIdx := make([]uint64, nbuckets)
+	hashIdx := make([]int, nbuckets)
 
 	// Calculate hashes and put them into their designated buckets
 	for i := range items {
@@ -225,8 +218,8 @@ func (b *Builder) build(
 	// Sort buckets in decreasing size
 	sort.Sort(buckets)
 
-	maxHashIdx := ts * ts
-	occupied := make([]bool, ts)
+	maxHashIdx := tableSize * tableSize
+	occupied := make([]bool, tableSize)
 	indices := make([]uint64, 0, len(buckets[0].hashes))
 
 	// Process buckets and populate table
@@ -238,7 +231,7 @@ func (b *Builder) build(
 		d0 := uint64(0)
 		d1 := uint64(math.MaxUint64) // rolls back to 0 when 1 is added
 
-		hidx := uint64(0)
+		hidx := 0
 
 	NextHashIdx:
 		for {
@@ -279,7 +272,7 @@ func (b *Builder) build(
 	// Construct hash array
 	array := newCompactArray()
 	for _, idx := range hashIdx {
-		array.Add(int(idx))
+		array.Add(idx)
 	}
 
 	m := &Map{
@@ -302,25 +295,4 @@ func nearestPrime(num int) int {
 	}
 
 	return num
-}
-
-func randBytes(size int) []byte {
-	b := make([]byte, size)
-	for i := range b {
-		b[i] = byte(rand.Intn(256))
-	}
-
-	return b
-}
-
-func keyExists(items items, key []byte) bool {
-	n := sort.Search(len(items), func(i int) bool {
-		return bytes.Compare(items[i].key, key) >= 0
-	})
-
-	if n < len(items) && bytes.Equal(items[n].key, key) {
-		return true
-	}
-
-	return false
 }

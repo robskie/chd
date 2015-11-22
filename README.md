@@ -44,7 +44,7 @@ for _, item := range items {
 }
 
 // Build the map
-m := builder.Build()
+m, _ := builder.Build()
 
 // Rearrange items according to its map index
 items = append(items, make([]Item, m.Cap()-len(items))...)

@@ -40,7 +40,7 @@ func TestMapDelete(t *testing.T) {
 
 	// Delete items that weren't added
 	for i := 0; i < 100; i++ {
-		b.Delete(randBytes(8))
+		b.Delete(encode(i))
 	}
 
 	// Add items
