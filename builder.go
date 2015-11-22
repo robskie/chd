@@ -218,7 +218,7 @@ func (b *Builder) build(
 	// Sort buckets in decreasing size
 	sort.Sort(buckets)
 
-	maxHashIdx := tableSize * tableSize
+	maxHashIdx := min(tableSize*tableSize, 1<<20)
 	occupied := make([]bool, tableSize)
 	indices := make([]uint64, 0, len(buckets[0].hashes))
 
@@ -295,4 +295,12 @@ func nearestPrime(num int) int {
 	}
 
 	return num
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+
+	return b
 }

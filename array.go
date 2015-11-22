@@ -1,9 +1,6 @@
 package chd
 
-import (
-	"reflect"
-	"unsafe"
-)
+import "reflect"
 
 // CompactArray represents a
 // compressed integer array.
@@ -49,7 +46,7 @@ func indirect(t reflect.Type) reflect.Type {
 	return t.Elem()
 }
 
-type intArray []int
+type intArray []int32
 
 func newIntArray(size int) *intArray {
 	a := make(intArray, 0, size)
@@ -57,11 +54,11 @@ func newIntArray(size int) *intArray {
 }
 
 func (a *intArray) Add(value int) {
-	*a = append(*a, value)
+	*a = append(*a, int32(value))
 }
 
 func (a intArray) Get(index int) int {
-	return a[index]
+	return int(a[index])
 }
 
 func (a intArray) Len() int {
@@ -69,6 +66,5 @@ func (a intArray) Len() int {
 }
 
 func (a intArray) Size() int {
-	sizeofInt := int(unsafe.Sizeof(int(0)))
-	return len(a) * sizeofInt
+	return len(a) * 4
 }
