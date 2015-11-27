@@ -147,10 +147,10 @@ func (b *Builder) Build() (m *Map, err error) {
 	// Remove duplicates and deleted items by
 	// moving them to the front and then slicing
 	front := 0
-	pkey := b.items[0].key
-	for i, item := range b.items[1:] {
+	pkey := make([]byte, len(b.items[0].key)+1)
+	for i, item := range b.items {
 		if bytes.Equal(pkey, item.key) || item.deleted {
-			b.items[front], b.items[i+1] = b.items[i+1], b.items[front]
+			b.items[front], b.items[i] = b.items[i], b.items[front]
 			front++
 		}
 
