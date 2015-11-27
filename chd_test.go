@@ -3,7 +3,6 @@ package chd
 import (
 	"bytes"
 	"encoding/binary"
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -141,14 +140,9 @@ func BenchmarkMapGet100KKeys(b *testing.B) {
 	}
 	m, _ := builder.Build()
 
-	kidx := make([]int, b.N)
-	for i := range kidx {
-		kidx[i] = rand.Intn(len(keys))
-	}
-
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Get(keys[kidx[i]])
+		m.Get(keys[i%1e5])
 	}
 }
 

@@ -100,5 +100,5 @@ You can run these benchmarks on your machine by typing this command
 BenchmarkBuild10KKeys-4           30       46166731 ns/op
 BenchmarkBuild100KKeys-4           2      672838604 ns/op
 BenchmarkBuild1MKeys-4             1    13144765689 ns/op
-BenchmarkMapGet100KKeys-4   10000000            221 ns/op
+BenchmarkMapGet100KKeys-4   10000000            133 ns/op
 ```
