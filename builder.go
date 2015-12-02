@@ -138,6 +138,10 @@ func (b *Builder) Delete(key []byte) {
 
 // Build creates a map.
 func (b *Builder) Build() (m *Map, err error) {
+	if len(b.items) == 0 {
+		return &Map{}, nil
+	}
+
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	// Sort items in ascending order

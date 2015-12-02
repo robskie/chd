@@ -1,6 +1,21 @@
 package chd
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestBuildEmpty(t *testing.T) {
+	defer func() {
+		assert.Nil(t, recover())
+	}()
+
+	builder := NewBuilder(nil)
+	m, err := builder.Build()
+	assert.NotNil(t, m)
+	assert.Nil(t, err)
+}
 
 func benchmarkBuild(b *testing.B, nkeys int) {
 	builder := NewBuilder(nil)
