@@ -148,19 +148,17 @@ func (b *Builder) Build() (m *Map, err error) {
 	// of keys and decreasing counter
 	sort.Sort(b.items)
 
-	// Remove duplicates and deleted items by
-	// moving them to the front and then slicing
-	front := 0
+	// Remove duplicates and deleted items
+	items := b.items[:0]
 	pkey := make([]byte, len(b.items[0].key)+1)
-	for i, item := range b.items {
-		if bytes.Equal(pkey, item.key) || item.deleted {
-			b.items[front], b.items[i] = b.items[i], b.items[front]
-			front++
+	for _, item := range b.items {
+		if !bytes.Equal(pkey, item.key) && !item.deleted {
+			items = append(items, item)
 		}
 
 		pkey = item.key
 	}
-	b.items = b.items[front:]
+	b.items = items
 
 	loadFactor := b.opts.LoadFactor
 	tableSize := int(float64(len(b.items)) / loadFactor)
