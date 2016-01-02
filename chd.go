@@ -58,31 +58,37 @@ func (m *Map) Get(key []byte) int {
 func (m *Map) Write(w io.Writer) error {
 	enc := gob.NewEncoder(w)
 
-	enc.Encode(m.seed)
-	enc.Encode(m.length)
-	enc.Encode(m.tableSize)
+	err := checkErr(
+		enc.Encode(m.seed),
+		enc.Encode(m.length),
+		enc.Encode(m.tableSize),
+		enc.Encode(m.hashes),
+	)
 
-	if err := enc.Encode(m.hashes); err != nil {
-		return fmt.Errorf("chd: write failed (%v)", err)
+	if err != nil {
+		err = fmt.Errorf("chd: write failed (%v)", err)
 	}
 
-	return nil
+	return err
 }
 
 // Read deserializes a map.
 func (m *Map) Read(r io.Reader) error {
 	dec := gob.NewDecoder(r)
 
-	dec.Decode(&m.seed)
-	dec.Decode(&m.length)
-	dec.Decode(&m.tableSize)
-
 	m.hashes = newCompactArray()
-	if err := dec.Decode(m.hashes); err != nil {
-		return fmt.Errorf("chd: read failed (%v)", err)
+	err := checkErr(
+		dec.Decode(&m.seed),
+		dec.Decode(&m.length),
+		dec.Decode(&m.tableSize),
+		dec.Decode(m.hashes),
+	)
+
+	if err != nil {
+		err = fmt.Errorf("chd: read failed (%v)", err)
 	}
 
-	return nil
+	return err
 }
 
 // Len returns the total number of keys.
@@ -99,4 +105,14 @@ func (m *Map) Cap() int {
 // Size returns the size in bytes.
 func (m *Map) Size() int {
 	return m.hashes.Size()
+}
+
+func checkErr(err ...error) error {
+	for _, e := range err {
+		if e != nil {
+			return e
+		}
+	}
+
+	return nil
 }
