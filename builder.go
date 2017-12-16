@@ -44,12 +44,13 @@ func NewBuildOptions() *BuildOptions {
 
 type item struct {
 	key []byte
+	value []byte
 
 	// counter is used for
 	// removing key duplicates
 	counter int
 
-	deleted bool
+	h1, h2, h3 uint64
 }
 
 type items []item
@@ -122,17 +123,8 @@ func NewBuilder(opts *BuildOptions) *Builder {
 }
 
 // Add adds a given key to the builder.
-func (b *Builder) Add(key []byte) {
-	item := item{key, b.counter, false}
-	b.items = append(b.items, item)
-
-	b.counter++
-}
-
-// Delete removes the item with the given key.
-func (b *Builder) Delete(key []byte) {
-	item := item{key, b.counter, true}
-	b.items = append(b.items, item)
+func (b *Builder) Add(key, value []byte) {
+	b.items = append(b.items, item{key, value, b.counter, 0, 0, 0})
 	b.counter++
 }
 
@@ -146,23 +138,11 @@ func (b *Builder) Build() (m *Map, err error) {
 
 	// Sort items in ascending order
 	// of keys and decreasing counter
-	sort.Sort(b.items)
-
-	// Remove duplicates and deleted items
-	items := b.items[:0]
-	pkey := make([]byte, len(b.items[0].key)+1)
-	for _, item := range b.items {
-		if !bytes.Equal(pkey, item.key) && !item.deleted {
-			items = append(items, item)
-		}
-
-		pkey = item.key
-	}
-	b.items = items
+	//sort.Sort(b.items)
 
 	loadFactor := b.opts.LoadFactor
-	tableSize := int(float64(len(b.items)) / loadFactor)
-	tableSize = nearestPrime(tableSize)
+	tableSize := uint64(float64(len(b.items)) / loadFactor)
+	tableSize = uint64(nearestPrime(int(tableSize)))
 
 	// Try building the map
 	for {
@@ -183,8 +163,8 @@ func (b *Builder) Build() (m *Map, err error) {
 		if b.opts.ForceBuild {
 			loadFactor *= 0.90
 
-			tableSize = int(float64(len(b.items)) / loadFactor)
-			tableSize = nearestPrime(tableSize)
+			tableSize = uint64(float64(len(b.items)) / loadFactor)
+			tableSize = uint64(nearestPrime(int(tableSize)))
 		} else {
 			return nil, err
 		}
@@ -195,22 +175,26 @@ func (b *Builder) Build() (m *Map, err error) {
 // returns an error if unsuccessful.
 func (b *Builder) build(
 	seed [2]uint64,
-	bucketSize,
-	tableSize int,
+	bucketSize int,
+	tableSize uint64,
 	items []item) (*Map, error) {
 
-	ts := uint64(tableSize)
 	nbuckets := uint64(len(items)/bucketSize) + 1
 	buckets := make(buckets, nbuckets)
-	hashIdx := make([]int, nbuckets)
+	hashIdx := make([]uint64, nbuckets)
 
 	// Calculate hashes and put them into their designated buckets
+	var h1, h2, h3 uint64
 	for i := range items {
-		h1, h2, h3, _ := spookyHash(items[i].key, seed[0], seed[1])
+		h1, h2, h3, _ = spookyHash(items[i].key, seed[0], seed[1])
 
-		h2 %= ts
-		h3 %= ts
+		h2 %= tableSize
+		h3 %= tableSize
 		hash := hash{h2, h3}
+
+		items[i].h1 = h1
+		items[i].h2 = h2
+		items[i].h3 = h3
 
 		bidx := h1 % nbuckets
 		buckets[bidx].index = bidx
@@ -220,20 +204,22 @@ func (b *Builder) build(
 	// Sort buckets in decreasing size
 	sort.Sort(buckets)
 
-	maxHashIdx := min(tableSize*tableSize, 1<<20)
-	occupied := make([]bool, tableSize)
+	maxHashIdx := uint64(min(tableSize*tableSize, 1<<20))
+	occupied := make([]bool, int(tableSize))
 	indices := make([]uint64, 0, len(buckets[0].hashes))
 
 	// Process buckets and populate table
+	var d0, d1 uint64
+	var idx uint64
+	var hidx uint64
 	for _, b := range buckets {
 		if len(b.hashes) == 0 {
 			continue
 		}
 
-		d0 := uint64(0)
-		d1 := uint64(math.MaxUint64) // rolls back to 0 when 1 is added
-
-		hidx := 0
+		d0 = 0
+		d1 = math.MaxUint64 // rolls back to 0 when 1 is added
+		hidx = 0
 
 	NextHashIdx:
 		for {
@@ -242,14 +228,14 @@ func (b *Builder) build(
 			}
 
 			d1++
-			if d1 == ts {
+			if d1 == tableSize {
 				d0++
 				d1 = 0
 			}
 
 			indices = indices[:0]
 			for _, h := range b.hashes {
-				idx := (h.h1 + (d0 * h.h2) + d1) % ts
+				idx = (h.h1 + (d0 * h.h2) + d1) % tableSize
 
 				if occupied[idx] {
 					// Collission has occured, clear
@@ -271,17 +257,24 @@ func (b *Builder) build(
 		}
 	}
 
-	// Construct hash array
-	array := newCompactArray()
-	for _, idx := range hashIdx {
-		array.Add(idx)
-	}
-
 	m := &Map{
 		seed,
 		len(items),
 		tableSize,
-		array,
+		nbuckets,
+		hashIdx,
+		make([][]byte, tableSize),
+	}
+
+	for _, item := range items {
+		h2, h3 = item.h2, item.h3
+		hidx = m.index[int(item.h1 % nbuckets)]
+
+		h2 %= tableSize
+		h3 %= tableSize
+		d0 = hidx / tableSize
+		d1 = hidx % tableSize
+		m.values[int((h2 + (d0 * h3) + d1) % tableSize)] = item.value
 	}
 
 	return m, nil
@@ -299,7 +292,7 @@ func nearestPrime(num int) int {
 	return num
 }
 
-func min(a, b int) int {
+func min(a, b uint64) uint64 {
 	if a < b {
 		return a
 	}
