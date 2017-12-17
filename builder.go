@@ -259,12 +259,14 @@ func (b *Builder) build(
 
 	m := &Map{
 		seed,
-		len(items),
+		uint64(len(items)),
 		tableSize,
 		nbuckets,
 		hashIdx,
 		make([][]byte, tableSize),
+		make([][]byte, tableSize),
 	}
+
 
 	for _, item := range items {
 		h2, h3 = item.h2, item.h3
@@ -274,7 +276,9 @@ func (b *Builder) build(
 		h3 %= tableSize
 		d0 = hidx / tableSize
 		d1 = hidx % tableSize
-		m.values[int((h2 + (d0 * h3) + d1) % tableSize)] = item.value
+		idx = (h2 + (d0 * h3) + d1) % tableSize
+		m.keys[idx] = item.key
+		m.values[idx] = item.value
 	}
 
 	return m, nil
