@@ -6,8 +6,9 @@
 package chd
 
 import (
-	"io"
 	"encoding/binary"
+	"io"
+	"math/rand"
 )
 
 // Map represents a map that uses
@@ -28,13 +29,9 @@ func NewMap() *Map {
 	return &Map{}
 }
 
-// GetIndex returns the index of a given key. This will
-// always return a value in the range [0, Map.Cap())
-// even if the key is not found. It is up to the user
-// to validate the returned index.
-func (m *Map) GetIndex(key []byte) int {
+func (m *Map) Get(key []byte) []byte {
 	if m.length == 0 {
-		return 0
+		return nil
 	}
 
 	h1, h2, h3, _ := spookyHash(key, m.seed[0], m.seed[1])
@@ -49,11 +46,23 @@ func (m *Map) GetIndex(key []byte) int {
 	d1 := hidx % tableSize
 	idx := int((h2 + (d0 * h3) + d1) % tableSize)
 
-	return idx
+	return m.values[idx]
 }
 
-func (m *Map) Get(key []byte) []byte {
-	return m.values[m.GetIndex(key)]
+// Get a random entry from the hash table
+func (m *Map) GetRandomValue() []byte {
+	if m.length == 0 {
+		return nil
+	}
+	return m.values[rand.Intn(int(m.length))]
+}
+
+// Get a random entry from the hash table
+func (m *Map) GetRandomKey() []byte {
+	if m.length == 0 {
+		return nil
+	}
+	return m.keys[rand.Intn(int(m.length))]
 }
 
 // Len returns the total number of keys.
@@ -63,7 +72,7 @@ func (m *Map) Len() int {
 
 // Size returns the size in bytes.
 func (m *Map) Size() int {
-	return 0
+	return int(m.length)
 }
 
 func (m *Map) Read(p []byte) (n int, err error) {
@@ -78,14 +87,14 @@ func (m *Map) Read(p []byte) (n int, err error) {
 	m.index = make([]uint64, m.indexLen)
 
 	var i uint64
-	for i=0; i<m.indexLen; i++ {
+	for i = 0; i < m.indexLen; i++ {
 		m.index[i] = bi.ReadInt()
 	}
 
 	var kl, vl uint64
 	m.keys = make([][]byte, m.tableSize)
 	m.values = make([][]byte, m.tableSize)
-	for i=0;i<m.tableSize; i++ {
+	for i = 0; i < m.tableSize; i++ {
 		kl = bi.ReadInt()
 		vl = bi.ReadInt()
 		m.keys[i] = bi.Read(kl)
@@ -123,7 +132,7 @@ func (m *Map) WriteTo(w io.Writer) (n int64, err error) {
 
 	var ni int
 	var i uint64
-	for i=0; i<m.tableSize; i++ {
+	for i = 0; i < m.tableSize; i++ {
 		if n1, err = write(uint64(len(m.keys[i]))); err != nil {
 			return
 		}

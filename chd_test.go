@@ -1,16 +1,17 @@
 package chd_test
 
 import (
-	"testing"
 	"bytes"
-	"github.com/akaspin/chd"
 	"strconv"
+	"testing"
+
+	"github.com/akaspin/chd"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMap_WriteTo(t *testing.T) {
 	b := chd.NewBuilder(nil)
-	for i:=0;i<10;i++ {
+	for i := 0; i < 10; i++ {
 		b.Add([]byte(strconv.Itoa(i)), []byte(strconv.Itoa(i)))
 	}
 	c, err := b.Build()

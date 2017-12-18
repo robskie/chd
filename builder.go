@@ -43,7 +43,7 @@ func NewBuildOptions() *BuildOptions {
 }
 
 type item struct {
-	key []byte
+	key   []byte
 	value []byte
 
 	// counter is used for
@@ -267,10 +267,9 @@ func (b *Builder) build(
 		make([][]byte, tableSize),
 	}
 
-
 	for _, item := range items {
 		h2, h3 = item.h2, item.h3
-		hidx = m.index[int(item.h1 % nbuckets)]
+		hidx = m.index[int(item.h1%nbuckets)]
 
 		h2 %= tableSize
 		h3 %= tableSize
