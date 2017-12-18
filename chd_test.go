@@ -27,3 +27,27 @@ func TestMap_WriteTo(t *testing.T) {
 
 	assert.Equal(t, "3", string(c1.Get([]byte("3"))))
 }
+
+func TestMap_Get(t *testing.T) {
+	b := NewBuilder(nil)
+	for i := 0; i < 4; i++ {
+		b.Add([]byte(strconv.Itoa(i)), []byte(strconv.Itoa(i)))
+	}
+	c, err := b.Build()
+	assert.NoError(t, err)
+
+	t.Run(`found`, func(t *testing.T) {
+		assert.NotNil(t, c.Get([]byte("0")))
+		assert.NotNil(t, c.Get([]byte("3")))
+	})
+	t.Run(`not found`, func(t *testing.T) {
+		assert.Nil(t, c.Get([]byte("10")))
+	})
+	t.Run(`random key`, func(t *testing.T) {
+		assert.NotNil(t, c.GetRandomKey())
+	})
+	t.Run(`random value`, func(t *testing.T) {
+		assert.NotNil(t, c.GetRandomValue())
+	})
+}
+

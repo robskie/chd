@@ -6,9 +6,9 @@
 package chd
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
-	"math/rand"
 )
 
 // Map represents a map that uses
@@ -33,19 +33,10 @@ func (m *Map) Get(key []byte) []byte {
 	if m.length == 0 {
 		return nil
 	}
-
-	h1, h2, h3, _ := spookyHash(key, m.seed[0], m.seed[1])
-
-	hlen := m.indexLen
-	hidx := m.index[int(h1%hlen)]
-
-	tableSize := m.tableSize
-	h2 %= tableSize
-	h3 %= tableSize
-	d0 := hidx / tableSize
-	d1 := hidx % tableSize
-	idx := int((h2 + (d0 * h3) + d1) % tableSize)
-
+	idx := m.getIndex(key)
+	if bytes.Compare(key, m.keys[idx]) != 0 {
+		return nil
+	}
 	return m.values[idx]
 }
 
@@ -54,7 +45,7 @@ func (m *Map) GetRandomValue() []byte {
 	if m.length == 0 {
 		return nil
 	}
-	return m.values[rand.Intn(int(m.length))]
+	return m.values[m.getIndex([]byte{})]
 }
 
 // Get a random entry from the hash table
@@ -62,7 +53,26 @@ func (m *Map) GetRandomKey() []byte {
 	if m.length == 0 {
 		return nil
 	}
-	return m.keys[rand.Intn(int(m.length))]
+	return m.keys[m.getIndex([]byte{})]
+}
+
+func (m *Map) getIndex(key []byte) (idx uint64) {
+	if m.length == 0 {
+		return 0
+	}
+
+	h1, h2, h3, _ := spookyHash(key, m.seed[0], m.seed[1])
+
+	hlen := m.indexLen
+	hidx := m.index[int(h1%hlen)]
+
+	//tableSize :=
+	h2 %= m.tableSize
+	h3 %= m.tableSize
+	d0 := hidx / m.tableSize
+	d1 := hidx % m.tableSize
+	idx = (h2 + (d0 * h3) + d1) % m.tableSize
+	return
 }
 
 // Len returns the total number of keys.
