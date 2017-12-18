@@ -1,16 +1,15 @@
-package chd_test
+package chd
 
 import (
 	"bytes"
 	"strconv"
 	"testing"
 
-	"github.com/akaspin/chd"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMap_WriteTo(t *testing.T) {
-	b := chd.NewBuilder(nil)
+	b := NewBuilder(nil)
 	for i := 0; i < 10; i++ {
 		b.Add([]byte(strconv.Itoa(i)), []byte(strconv.Itoa(i)))
 	}
@@ -23,7 +22,7 @@ func TestMap_WriteTo(t *testing.T) {
 	_, err = c.WriteTo(&buf)
 	assert.NoError(t, err)
 
-	c1 := chd.NewMap()
+	c1 := NewMap()
 	c1.Read(buf.Bytes())
 
 	assert.Equal(t, "3", string(c1.Get([]byte("3"))))
