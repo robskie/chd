@@ -51,3 +51,37 @@ func TestMap_Get(t *testing.T) {
 	})
 }
 
+func TestMap_GetRandomKey(t *testing.T) {
+	b := NewBuilder(nil)
+	for i := 0; i < 1000; i++ {
+		b.Add([]byte("k"+strconv.Itoa(i)), []byte("v"+strconv.Itoa(i)))
+	}
+	c, err := b.Build()
+	assert.NoError(t, err)
+
+	vals := map[string]struct{}{}
+	for i := 0; i < 1000; i++ {
+		val := c.GetRandomKey()
+		assert.True(t, len(val) > 0)
+		vals[string(val)] = struct{}{}
+	}
+	assert.True(t, len(vals) > 1)
+}
+
+func TestMap_GetRandomValue(t *testing.T) {
+	b := NewBuilder(nil)
+	for i := 0; i < 1000; i++ {
+		b.Add([]byte("k"+strconv.Itoa(i)), []byte("v"+strconv.Itoa(i)))
+	}
+	c, err := b.Build()
+	assert.NoError(t, err)
+
+	vals := map[string]struct{}{}
+	for i := 0; i < 1000; i++ {
+		val := c.GetRandomValue()
+		assert.True(t, len(val) > 0)
+		vals[string(val)] = struct{}{}
+	}
+	assert.True(t, len(vals) > 1)
+}
+

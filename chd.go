@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"math/rand"
 )
 
 // Map represents a map that uses
@@ -45,7 +46,15 @@ func (m *Map) GetRandomValue() []byte {
 	if m.length == 0 {
 		return nil
 	}
-	return m.values[m.getIndex([]byte{})]
+	var res []byte
+	i := rand.Intn(int(m.length))
+	if res = m.values[i]; len(res) == 0 {
+		if i == int(m.length)-1 {
+			return m.values[i-1]
+		}
+		return m.values[i+1]
+	}
+	return res
 }
 
 // Get a random entry from the hash table
@@ -53,7 +62,16 @@ func (m *Map) GetRandomKey() []byte {
 	if m.length == 0 {
 		return nil
 	}
-	return m.keys[m.getIndex([]byte{})]
+	// value may be empty
+	var res []byte
+	i := rand.Intn(int(m.length))
+	if res = m.keys[i]; len(res) == 0 {
+		if i == int(m.length)-1 {
+			return m.keys[i-1]
+		}
+		return m.keys[i+1]
+	}
+	return res
 }
 
 func (m *Map) getIndex(key []byte) (idx uint64) {
@@ -66,7 +84,7 @@ func (m *Map) getIndex(key []byte) (idx uint64) {
 	hlen := m.indexLen
 	hidx := m.index[int(h1%hlen)]
 
-	//tableSize :=
+	// tableSize :=
 	h2 %= m.tableSize
 	h3 %= m.tableSize
 	d0 := hidx / m.tableSize
@@ -94,7 +112,7 @@ func (m *Map) Read(p []byte) (n int, err error) {
 	m.length = bi.ReadInt()
 
 	// index
-	m.index = make([]uint64, m.indexLen)
+	m.index = make([]uint64, m.length)
 
 	var i uint64
 	for i = 0; i < m.indexLen; i++ {
