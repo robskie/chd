@@ -8,8 +8,8 @@ package chd
 import (
 	"bytes"
 	"encoding/binary"
+	rand "github.com/remerge/go-xorshift"
 	"io"
-	"math/rand"
 )
 
 // Map represents a map that uses
@@ -43,35 +43,35 @@ func (m *Map) Get(key []byte) []byte {
 
 // Get a random entry from the hash table
 func (m *Map) GetRandomValue() []byte {
-	if m.length == 0 {
+	if m.length == 0 || len(m.values) == 0 {
 		return nil
 	}
-	var res []byte
-	i := rand.Intn(int(m.length))
-	if res = m.values[i]; len(res) == 0 {
-		if i == int(m.length)-1 {
-			return m.values[i-1]
+	// due to the nature of the mph the upper bound here is ~2, lets try
+	// it 5 times anyway
+	for try := 0; try < 5; try++ {
+		v := m.values[rand.Intn(len(m.values))]
+		if len(v) > 0 {
+			return v
 		}
-		return m.values[i+1]
 	}
-	return res
+	return nil
 }
 
 // Get a random entry from the hash table
 func (m *Map) GetRandomKey() []byte {
-	if m.length == 0 {
+	if m.length == 0 || len(m.keys) == 0 {
 		return nil
 	}
-	// value may be empty
-	var res []byte
-	i := rand.Intn(int(m.length))
-	if res = m.keys[i]; len(res) == 0 {
-		if i == int(m.length)-1 {
-			return m.keys[i-1]
+	// due to the nature of the mph the upper bound here is ~2, lets try
+	// it 5 times anyway
+	for try := 0; try < 5; try++ {
+		v := m.keys[rand.Intn(len(m.keys))]
+		if len(v) > 0 {
+			return v
 		}
-		return m.keys[i+1]
 	}
-	return res
+	return nil
+
 }
 
 func (m *Map) getIndex(key []byte) (idx uint64) {

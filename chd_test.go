@@ -60,7 +60,7 @@ func TestMap_GetRandomKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	vals := map[string]struct{}{}
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		val := c.GetRandomKey()
 		assert.True(t, len(val) > 0)
 		vals[string(val)] = struct{}{}
@@ -77,11 +77,10 @@ func TestMap_GetRandomValue(t *testing.T) {
 	assert.NoError(t, err)
 
 	vals := map[string]struct{}{}
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000; i++ {
 		val := c.GetRandomValue()
 		assert.True(t, len(val) > 0)
 		vals[string(val)] = struct{}{}
 	}
 	assert.True(t, len(vals) > 1)
 }
-
