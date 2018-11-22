@@ -8,7 +8,6 @@ package chd
 import (
 	"bytes"
 	"encoding/binary"
-	rand "github.com/remerge/go-xorshift"
 	"io"
 )
 
@@ -46,15 +45,8 @@ func (m *Map) GetRandomValue() []byte {
 	if m.length == 0 || len(m.values) == 0 {
 		return nil
 	}
-	// due to the nature of the mph the upper bound here is ~2, lets try
-	// it 5 times anyway
-	for try := 0; try < 5; try++ {
-		v := m.values[rand.Intn(len(m.values))]
-		if len(v) > 0 {
-			return v
-		}
-	}
-	return nil
+
+	return pickRandom(m.values)
 }
 
 // Get a random entry from the hash table
@@ -62,16 +54,7 @@ func (m *Map) GetRandomKey() []byte {
 	if m.length == 0 || len(m.keys) == 0 {
 		return nil
 	}
-	// due to the nature of the mph the upper bound here is ~2, lets try
-	// it 5 times anyway
-	for try := 0; try < 5; try++ {
-		v := m.keys[rand.Intn(len(m.keys))]
-		if len(v) > 0 {
-			return v
-		}
-	}
-	return nil
-
+	return pickRandom(m.keys)
 }
 
 func (m *Map) getIndex(key []byte) (idx uint64) {

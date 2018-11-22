@@ -52,35 +52,56 @@ func TestMap_Get(t *testing.T) {
 }
 
 func TestMap_GetRandomKey(t *testing.T) {
-	b := NewBuilder(nil)
-	for i := 0; i < 1000; i++ {
-		b.Add([]byte("k"+strconv.Itoa(i)), []byte("v"+strconv.Itoa(i)))
-	}
-	c, err := b.Build()
-	assert.NoError(t, err)
+	iterations := 1000
+	for it := 1; it < iterations; it++ {
+		t.Run(strconv.Itoa(it), func(t *testing.T) {
+			b := NewBuilder(nil)
+			for i := 0; i < it; i++ {
+				b.Add([]byte("k"+strconv.Itoa(i)), []byte("v"+strconv.Itoa(i)))
+			}
+			c, err := b.Build()
+			assert.NoError(t, err)
 
-	vals := map[string]struct{}{}
-	for i := 0; i < 10000; i++ {
-		val := c.GetRandomKey()
-		assert.True(t, len(val) > 0)
-		vals[string(val)] = struct{}{}
+			vals := map[string]struct{}{}
+			for i := 0; i < 10000; i++ {
+				val := c.GetRandomKey()
+				assert.NotEmpty(t, val)
+				vals[string(val)] = struct{}{}
+			}
+			if it == 1 {
+				assert.Len(t, vals, 1)
+				return
+			}
+			assert.True(t, len(vals) > 1)
+		})
 	}
-	assert.True(t, len(vals) > 1)
+
 }
 
 func TestMap_GetRandomValue(t *testing.T) {
-	b := NewBuilder(nil)
-	for i := 0; i < 1000; i++ {
-		b.Add([]byte("k"+strconv.Itoa(i)), []byte("v"+strconv.Itoa(i)))
-	}
-	c, err := b.Build()
-	assert.NoError(t, err)
+	iterations := 1000
 
-	vals := map[string]struct{}{}
-	for i := 0; i < 10000; i++ {
-		val := c.GetRandomValue()
-		assert.True(t, len(val) > 0)
-		vals[string(val)] = struct{}{}
+	for it := 1; it < iterations; it++ {
+		t.Run(strconv.Itoa(it), func(t *testing.T) {
+			b := NewBuilder(nil)
+			for i := 0; i < it; i++ {
+				b.Add([]byte("k"+strconv.Itoa(i)), []byte("v"+strconv.Itoa(i)))
+			}
+			c, err := b.Build()
+			assert.NoError(t, err)
+
+			vals := map[string]struct{}{}
+			for i := 0; i < 10000; i++ {
+				val := c.GetRandomValue()
+				assert.NotEmpty(t, val)
+				vals[string(val)] = struct{}{}
+			}
+			if it == 1 {
+				assert.Len(t, vals, 1)
+				return
+			}
+			assert.True(t, len(vals) > 1)
+		})
 	}
-	assert.True(t, len(vals) > 1)
+
 }
