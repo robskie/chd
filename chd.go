@@ -30,6 +30,9 @@ func NewMap() *Map {
 }
 
 func (m *Map) Get(key []byte) []byte {
+	if len(key) == 0 {
+		return nil
+	}
 	if m.length == 0 {
 		return nil
 	}
